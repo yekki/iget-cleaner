@@ -12,7 +12,7 @@ meta['author'] = '罗永浩'
 meta['abbr'] = 'lyh'
 
 
-def filter_files(root, endswith):
+def get_files_from_dir(root, endswith):
     findings = list()
     for root, dirs, files in os.walk(root):
         for file in files:
@@ -21,11 +21,21 @@ def filter_files(root, endswith):
 
     return findings
 
+def get_months_zh(root, year):
+    files = get_files_from_dir(root, '.mp3')
+    months = set([Path(f).stem[0:5].replace('lyh', '') for f in files])
+    months_zh = set([f'{year}年{mon}月' for mon in months])
+    return months_zh
+
+def get_months(root):
+    files = get_files_from_dir(root, '.mp3')
+    return set([Path(f).stem[0:5].replace('lyh', '') for f in files])
+
 
 def get_days_in_month(root, month):
-    files = filter_files(root, '.mp3')
+    mp3_files = set(get_files_from_dir(root, '.mp3'))
 
-    print(files)
+    return filter(lambda x: Path(x).stem.startswith(meta['abbr'] + month), mp3_files)
 
 
 def generate_meta():
@@ -60,9 +70,7 @@ def generate_meta():
 
 
 def main():
-    # get_days_in_month('2')
-    get_days_in_month(SOURCE_PATH, '2')
-
-
+    mons = get_months_zh(SOURCE_PATH, '2017')
+    print(mons.pop()[-3:-1])
 if __name__ == '__main__':
     main()
