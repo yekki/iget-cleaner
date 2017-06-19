@@ -1,5 +1,5 @@
 from pathlib import Path
-import json
+import json, os
 
 SOURCE_PATH = '/Users/gniu/(lyh)罗永浩干货日记'
 DEST_PATH = '/Users/gniu/Temp.localized/lyh'
@@ -12,9 +12,25 @@ meta['author'] = '罗永浩'
 meta['abbr'] = 'lyh'
 
 
-def main():
+def filter_files(root, endswith):
+    findings = list()
+    for root, dirs, files in os.walk(root):
+        for file in files:
+            if file.endswith(endswith):
+                findings.append(os.path.join(root, file))
+
+    return findings
+
+
+def get_days_in_month(root, month):
+    files = filter_files(root, '.mp3')
+
+    print(files)
+
+
+def generate_meta():
     all_days = set([f.stem.replace(meta['abbr'], '')[0:4] for f in Path(SOURCE_PATH).glob('**/*.mp3') if
-            f.is_file() and f.stem.startswith(ALBUM_ABBR)])
+                    f.is_file() and f.stem.startswith(ALBUM_ABBR)])
     months = dict.fromkeys(set(m[0:2] for m in all_days))
     season = dict(no='01', months=months)
     for m in months:
@@ -34,7 +50,6 @@ def main():
             episodes.append(episode)
         season['months'][m] = episodes
 
-
     meta['seasons'] = list()
     meta['seasons'].append(season)
 
@@ -42,6 +57,11 @@ def main():
 
     with open('meta.json', 'w', encoding='utf-8') as fp:
         fp.write(data)
+
+
+def main():
+    # get_days_in_month('2')
+    get_days_in_month(SOURCE_PATH, '2')
 
 
 if __name__ == '__main__':
