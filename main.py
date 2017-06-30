@@ -1,81 +1,79 @@
 from pathlib import Path
 import json, os
 
-SOURCE_PATH = '/Users/gniu//(lyh)罗永浩干货日记'
-DEST_PATH = '/Users/gniu/Temp.localized/lyh'
 
-meta = dict()
-meta['name'] = '罗永浩干货日记'
-meta['author'] = '罗永浩'
-meta['abbr'] = 'lyh'
-meta['seasons'] = [dict(no='1', months=list())]
+def filter_files(root, prefix=None, suffix=None):
+    _files = list()
+
+    for root, dirs, files in os.walk(root):
+        for file in files:
+            _files.append(Path(os.path.join(root, file)))
+
+    if suffix and prefix:
+        return set(filter(lambda x: x.suffix == suffix and x.stem.startswith(prefix), _files))
+    elif prefix:
+        return set(filter(lambda x: x.stem.startswith(prefix), _files))
+    elif suffix:
+        return set(filter(lambda x: x.suffix == suffix, _files))
+    else:
+        return _files
 
 
-class AlbumParser:
-    def __init__(self, root, title, author, abbreviation, year, season_no):
-        self._title = title
-        self._author = author
-        self._abbreviation = abbreviation
-        self._root = root
-        self._season_no = season_no
-        self._year = year
-        self._files = list()
+def get_episodes_in_month(root, album, month):
+    days = set([f.stem for f in filter_files(root, suffix='.mp3', prefix=f'{album["abbr"]}{month}')])
+    episodes = dict()
+    for d in days:
+        index = len(album['abbr'])
+        episodes[d[index:]] = get_episode(root, d)
 
-        for root, dirs, files in os.walk(self._root):
-            for file in files:
-                self._files.append(Path(os.path.join(root, file)))
+    return episodes
 
-    def files(self, prefix=None, suffix=None):
 
-        if suffix and prefix:
-            return set(filter(lambda x: x.suffix == suffix and x.stem.startswith(prefix), self._files))
-        elif prefix:
-            return set(filter(lambda x: x.stem.startswith(prefix), self._files))
-        elif suffix:
-            return set(filter(lambda x: x.suffix == suffix, self._files))
-        else:
-            return self._files
+def get_episode(root, prefix):
+    mp3s = list(filter_files(root, prefix=prefix, suffix='.mp3'))
+    pics = list(filter_files(root, prefix=prefix, suffix='.jpg'))
 
-    def months(self):
-        mp3s = self.files(suffix='.mp3')
-        func = lambda x: self._year + '年' + x.stem[0:len(self._abbreviation) + 2].replace(self._abbreviation, '') + '月'
+    title = pics[0].stem
+    title = title[title.index('第'):]
 
-        return set(map(func, mp3s))
+    if title[-1].isdigit():
+        title = title[:-1]
 
-    def episodes(self):
-        pass
+    return dict(title=title, mp3s=[f.name for f in mp3s], pics=[f.name for f in pics])
 
-    def episodes_in_month(self, month):
-        days = set([f.stem for f in self.files(suffix='.mp3', prefix=f'{self._abbreviation}{month}')])
-        episodes = dict()
-        for d in days:
-            index = len(self._abbreviation)
-            episodes[d[index:]] = self.media(d)
 
-        return episodes
+def get_episodes(root, album, year):
+    mp3s = filter_files(root, suffix='.mp3')
+    months = [f.stem[0:len(album['abbr']) + 2].replace(album['abbr'], '') for f in mp3s]
+    episodes = dict()
 
-    def media(self, prefix):
-        mp3s = list(self.files(prefix=prefix, suffix='.mp3'))
-        pics = list(self.files(prefix=prefix, suffix='.jpg'))
+    for m in months:
+        episodes[f'{year}年{m}月'] = get_episodes_in_month(root, album, m)
 
-        title = pics[0].stem
-        title = title[title.index('第'):]
+    return episodes
 
-        if title[-1].isdigit():
-            title = title[:-1]
 
-        return dict(title=title, mp3s=[f.name for f in mp3s], pics=[f.name for f in pics])
+def build(root, album, year, output='meta.json'):
+    album['season']['years'][year] = get_episodes(root, album, 2017)
+    data = json.dumps(album, ensure_ascii=False, indent=4)
+    with open('meta.json', 'w', encoding='utf-8') as fp:
+        fp.write(data)
 
-    def dump_to_file(data, output='meta.json'):
-        data = json.dumps(meta, ensure_ascii=False, indent=4)
-
-        with open('meta.json', 'w', encoding='utf-8') as fp:
-            fp.write(data)
+    print('finished.')
 
 
 def main():
-    album = AlbumParser(SOURCE_PATH, '罗永浩干货日记', '罗永浩', 'lyh', '2017', '01')
-    print(album.episodes_in_month('05'))
+    SOURCE_PATH = '/Users/gniu//(lyh)罗永浩干货日记'
+    DEST_PATH = '/Users/gniu/Temp.localized/lyh'
+
+    album = dict()
+    album['name'] = '罗永浩干货日记'
+    album['author'] = '罗永浩'
+    album['abbr'] = 'lyh'
+    album['season'] = dict(no='1', years={'2017': dict()})
+
+
+    build(SOURCE_PATH, album, '2017')
 
 
 if __name__ == '__main__':
