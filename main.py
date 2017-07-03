@@ -1,15 +1,11 @@
-from album_factory import create_album
-from parsers.lyh_parser import LYHParser
-
+from parsers.base_parser import AlbumParser, Parser
 
 def main():
-    SOURCE_PATH = '/Users/gniu//(lyh)罗永浩干货日记'
-    DEST_PATH = '/Users/gniu/Temp.localized/lyh'
+    src = '/Users/gniu/get'
+    dest = '/Users/gniu/Temp.localized/wj'
 
-    album = create_album('lyh')
-    parser = LYHParser(SOURCE_PATH, DEST_PATH, album)
+    parser = AlbumParser.create_parser(src, dest, Parser.WJ)
     parser.dump_meta()
-    parser.check_meta()
     parser.handle_files()
 
 if __name__ == '__main__':

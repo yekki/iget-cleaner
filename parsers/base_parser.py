@@ -1,20 +1,57 @@
 import json, os, shutil, logging
 from pathlib import Path
 
+from enum import Enum
+
+
 def mkdir(dir):
     if not os.path.exists(dir):
         os.makedirs(dir)
 
-class AlbumParser:
-    _KEYS = set(['name', 'author', 'abbr', 'season'])
 
+class Parser(Enum):
+    LYH = 'lyh',
+    YSS = 'yss',
+    XY = 'xy',
+    WJ = 'wj'
+
+class AlbumParser:
     def __init__(self, src, dest, album):
         self._src = src
         self._dest = dest
         self._album = album
 
-        if not all(k in self._album for k in AlbumParser._KEYS):
-            raise KeyError(f'parameter album lost key in one of {AlbumParser._KEYS}')
+        mkdir(dest)
+
+        if not all(k in self._album for k in {'name', 'author', 'abbr', 'season'}):
+            raise KeyError(f'lost key in album parameter')
+
+    def create_parser(src, dest, parser):
+        album = dict()
+
+        if parser == Parser.LYH:
+            album['name'] = '罗永浩干货日记'
+            album['author'] = '罗永浩'
+            album['abbr'] = 'lyh'
+            album['season'] = dict(no='1', years={'2017': dict()})
+        elif parser == Parser.YSS:
+            album['name'] = '西方艺术史'
+            album['author'] = '严伯君'
+            album['abbr'] = 'yss'
+            album['season'] = dict(no='1', years={'2017': dict()})
+        elif parser == Parser.XY:
+            album['name'] = '熊逸书院'
+            album['author'] = '熊逸'
+            album['abbr'] = 'xy'
+            album['season'] = dict(no='1', years={'2017': dict()})
+        elif parser == Parser.WJ:
+            album['name'] = '硅谷来信'
+            album['author'] = '吴军'
+            album['abbr'] = 'wj'
+            album['season'] = dict(no='1', years={'2017': dict()})
+        else:
+            raise ValueError(f'no definition for album:{parser}')
+        return AlbumParser(src, dest, album)
 
     def get_episode(self, day):
         mp3s = sorted(list(self.find_all(prefix=day, suffix='.mp3')))
@@ -42,7 +79,7 @@ class AlbumParser:
         if '第' in t:
             title = t[t.index('第'):]
         else:
-            title = t[t.index(day)+len(day):]
+            title = t[t.index(day) + len(day):]
 
         if title[-1].isdigit():
             return title[:-1]
@@ -64,7 +101,7 @@ class AlbumParser:
 
         return episodes
 
-    def check_meta(self, meta_file='meta.json'):
+    def _check_meta(self, meta_file='meta.json'):
         all_files = set([f.name for f in self.find_all()])
 
         with open(meta_file, 'r', encoding='utf-8') as f:
@@ -90,6 +127,8 @@ class AlbumParser:
         data = json.dumps(self._album, ensure_ascii=False, indent=4)
         with open(output, 'w', encoding='utf-8') as fp:
             fp.write(data)
+
+        self._check_meta()
 
         with open(os.path.join(self._dest, output), 'w', encoding='utf-8') as fp:
             fp.write(data)
@@ -123,7 +162,8 @@ class AlbumParser:
                     _files.append(Path(os.path.join(root, file)))
 
         if suffix and prefix:
-            return set(filter(lambda x: x.suffix == suffix and x.stem.startswith(f"{self._album['abbr']}{prefix}"), _files))
+            return set(
+                filter(lambda x: x.suffix == suffix and x.stem.startswith(f"{self._album['abbr']}{prefix}"), _files))
         elif prefix:
             return set(filter(lambda x: x.stem.startswith(f"{self._album['abbr']}{prefix}"), _files))
         elif suffix:
